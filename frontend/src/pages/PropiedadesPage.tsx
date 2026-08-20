@@ -8,10 +8,12 @@ import { usePropiedades } from "@/hooks/useEntities";
 import { PropiedadFormModal } from "@/features/propiedades/PropiedadFormModal";
 import { formatAddress, formatCurrency } from "@/utils/format";
 import { propertyStatusLabels, propertyStatusRole, propertyTypeLabels } from "@/utils/labels";
+import type { Propiedad } from "@/types/entities";
 
 export function PropiedadesPage() {
   const { data, isLoading, error } = usePropiedades();
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Propiedad | null>(null);
 
   return (
     <div>
@@ -42,7 +44,11 @@ export function PropiedadesPage() {
             </thead>
             <tbody className="divide-y divide-gridline">
               {data.map((p) => (
-                <tr key={p.id} className="hover:bg-page/60">
+                <tr
+                  key={p.id}
+                  className="cursor-pointer hover:bg-page/60"
+                  onClick={() => setEditing(p)}
+                >
                   <td className="px-4 py-3 font-medium text-ink-primary">{p.nombre_referencia}</td>
                   <td className="px-4 py-3 text-ink-secondary">{formatAddress(p)}</td>
                   <td className="px-4 py-3 text-ink-secondary">{propertyTypeLabels[p.tipo]}</td>
@@ -65,6 +71,7 @@ export function PropiedadesPage() {
       )}
 
       {showForm && <PropiedadFormModal onClose={() => setShowForm(false)} />}
+      {editing && <PropiedadFormModal propiedad={editing} onClose={() => setEditing(null)} />}
     </div>
   );
 }

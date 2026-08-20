@@ -8,32 +8,52 @@ import { pagosApi } from "@/api/pagos";
 import { ApiError } from "@/api/client";
 import { qk } from "@/hooks/useEntities";
 import { PaymentMethod, PaymentStatus } from "@/types/enums";
-import type { Contrato, PagoCreate, Propiedad } from "@/types/entities";
+import type { Contrato, Pago, PagoCreate, Propiedad } from "@/types/entities";
 import { paymentStatusLabels } from "@/utils/labels";
+
+function toForm(p: Pago): PagoCreate {
+  const { id: _id, created_at: _c, updated_at: _u, ...rest } = p;
+  return rest;
+}
 
 export function PagoFormModal({
   contratos,
   propiedades,
+  pago,
   onClose,
 }: {
   contratos: Contrato[];
   propiedades: Propiedad[];
+  pago?: Pago | null;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<PagoCreate>({
-    contrato_id: contratos[0]?.id ?? "",
-    monto: "",
-    fecha_vencimiento: new Date().toISOString().slice(0, 10),
-    fecha_pago: null,
-    estado: PaymentStatus.pendiente,
-    metodo_pago: null,
-    comprobante_url: null,
-    notas: null,
-  });
+  const isEdit = !!pago;
+  const [form, setForm] = useState<PagoCreate>(
+    pago
+      ? toForm(pago)
+      : {
+          contrato_id: contratos[0]?.id ?? "",
+          monto: "",
+          fecha_vencimiento: new Date().toISOString().slice(0, 10),
+          fecha_pago: null,
+          estado: PaymentStatus.pendiente,
+          metodo_pago: null,
+          comprobante_url: null,
+          notas: null,
+        }
+  );
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: () => pagosApi.create(form),
+    mutationFn: () => (isEdit ? pagosApi.update(pago!.id, form) : pagosApi.create(form)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.pagos });
+      onClose();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => pagosApi.remove(pago!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.pagos });
       onClose();
@@ -46,7 +66,7 @@ export function PagoFormModal({
   };
 
   return (
-    <Modal title="Registrar pago" onClose={onClose}>
+    <Modal title={isEdit ? "Editar pago" : "Registrar pago"} onClose={onClose}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -149,13 +169,31 @@ export function PagoFormModal({
           </Select>
         </Field>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={mutation.isPending || !form.contrato_id}>
-            {mutation.isPending ? "Guardando…" : "Registrar pago"}
-          </Button>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            {isEdit && (
+              <Button
+                type="button"
+                variant="danger"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (confirm("¿Eliminar este pago?")) {
+                    deleteMutation.mutate();
+                  }
+                }}
+              >
+                {deleteMutation.isPending ? "Eliminando…" : "Eliminar"}
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={mutation.isPending || !form.contrato_id}>
+              {mutation.isPending ? "Guardando…" : isEdit ? "Guardar cambios" : "Registrar pago"}
+            </Button>
+          </div>
         </div>
       </form>
     </Modal>

@@ -1,24 +1,36 @@
+import { useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { LoadingState, ErrorState, EmptyState } from "@/components/common/QueryStates";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useContratos, useInquilinos, usePropiedades } from "@/hooks/useEntities";
+import { ContratoFormModal } from "@/features/contratos/ContratoFormModal";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { contractStatusLabels, contractStatusRole } from "@/utils/labels";
+import type { Contrato } from "@/types/entities";
 
 export function ContratosPage() {
   const contratos = useContratos();
   const propiedades = usePropiedades();
   const inquilinos = useInquilinos();
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Contrato | null>(null);
 
   const isLoading = contratos.isLoading || propiedades.isLoading || inquilinos.isLoading;
   const error = contratos.error || propiedades.error || inquilinos.error;
+  const hayDatosBase = (propiedades.data ?? []).length > 0 && (inquilinos.data ?? []).length > 0;
 
   return (
     <div>
       <PageHeader
         title="Contratos"
         description="Historial de arrendamiento por inmueble. Un solo contrato puede estar 'activo' por inmueble a la vez."
+        actions={
+          <Button onClick={() => setShowForm(true)} disabled={!hayDatosBase}>
+            + Nuevo contrato
+          </Button>
+        }
       />
 
       {isLoading && <LoadingState />}
@@ -47,7 +59,11 @@ export function ContratosPage() {
                 const propiedad = propiedades.data?.find((p) => p.id === c.propiedad_id);
                 const inquilino = inquilinos.data?.find((i) => i.id === c.inquilino_id);
                 return (
-                  <tr key={c.id} className="hover:bg-page/60">
+                  <tr
+                    key={c.id}
+                    className="cursor-pointer hover:bg-page/60"
+                    onClick={() => setEditing(c)}
+                  >
                     <td className="px-4 py-3 font-medium text-ink-primary">
                       {propiedad?.nombre_referencia ?? "—"}
                     </td>
@@ -77,6 +93,22 @@ export function ContratosPage() {
             </tbody>
           </table>
         </Card>
+      )}
+
+      {showForm && (
+        <ContratoFormModal
+          propiedades={propiedades.data ?? []}
+          inquilinos={inquilinos.data ?? []}
+          onClose={() => setShowForm(false)}
+        />
+      )}
+      {editing && (
+        <ContratoFormModal
+          propiedades={propiedades.data ?? []}
+          inquilinos={inquilinos.data ?? []}
+          contrato={editing}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   );

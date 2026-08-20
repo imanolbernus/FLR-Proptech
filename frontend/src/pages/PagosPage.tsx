@@ -8,12 +8,14 @@ import { useContratos, usePagos, usePropiedades } from "@/hooks/useEntities";
 import { PagoFormModal } from "@/features/pagos/PagoFormModal";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { paymentStatusLabels, paymentStatusRole } from "@/utils/labels";
+import type { Pago } from "@/types/entities";
 
 export function PagosPage() {
   const pagos = usePagos();
   const contratos = useContratos();
   const propiedades = usePropiedades();
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Pago | null>(null);
 
   const isLoading = pagos.isLoading || contratos.isLoading || propiedades.isLoading;
   const hayContratos = (contratos.data ?? []).length > 0;
@@ -57,7 +59,11 @@ export function PagosPage() {
                 const contrato = contratos.data?.find((c) => c.id === pago.contrato_id);
                 const propiedad = propiedades.data?.find((p) => p.id === contrato?.propiedad_id);
                 return (
-                  <tr key={pago.id} className="hover:bg-page/60">
+                  <tr
+                    key={pago.id}
+                    className="cursor-pointer hover:bg-page/60"
+                    onClick={() => setEditing(pago)}
+                  >
                     <td className="px-4 py-3 font-medium text-ink-primary">
                       {propiedad?.nombre_referencia ?? "—"}
                     </td>
@@ -86,6 +92,14 @@ export function PagosPage() {
           contratos={contratos.data ?? []}
           propiedades={propiedades.data ?? []}
           onClose={() => setShowForm(false)}
+        />
+      )}
+      {editing && (
+        <PagoFormModal
+          contratos={contratos.data ?? []}
+          propiedades={propiedades.data ?? []}
+          pago={editing}
+          onClose={() => setEditing(null)}
         />
       )}
     </div>

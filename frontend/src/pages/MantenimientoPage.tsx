@@ -8,11 +8,13 @@ import { usePropiedades, useTickets } from "@/hooks/useEntities";
 import { TicketFormModal } from "@/features/mantenimiento/TicketFormModal";
 import { formatDate } from "@/utils/format";
 import { ticketPriorityLabels, ticketPriorityRole, ticketStatusLabels, ticketStatusRole } from "@/utils/labels";
+import type { TicketMantenimiento } from "@/types/entities";
 
 export function MantenimientoPage() {
   const tickets = useTickets();
   const propiedades = usePropiedades();
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<TicketMantenimiento | null>(null);
 
   const hayPropiedades = (propiedades.data ?? []).length > 0;
 
@@ -54,7 +56,11 @@ export function MantenimientoPage() {
               {tickets.data.map((t) => {
                 const propiedad = propiedades.data?.find((p) => p.id === t.propiedad_id);
                 return (
-                  <tr key={t.id} className="hover:bg-page/60">
+                  <tr
+                    key={t.id}
+                    className="cursor-pointer hover:bg-page/60"
+                    onClick={() => setEditing(t)}
+                  >
                     <td className="px-4 py-3 font-medium text-ink-primary">
                       {propiedad?.nombre_referencia ?? "—"}
                     </td>
@@ -78,6 +84,13 @@ export function MantenimientoPage() {
 
       {showForm && (
         <TicketFormModal propiedades={propiedades.data ?? []} onClose={() => setShowForm(false)} />
+      )}
+      {editing && (
+        <TicketFormModal
+          propiedades={propiedades.data ?? []}
+          ticket={editing}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   );

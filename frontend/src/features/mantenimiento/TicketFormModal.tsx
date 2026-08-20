@@ -7,35 +7,55 @@ import { ErrorState } from "@/components/common/QueryStates";
 import { ticketsApi } from "@/api/tickets";
 import { ApiError } from "@/api/client";
 import { qk } from "@/hooks/useEntities";
-import { TicketPriority } from "@/types/enums";
-import type { Propiedad, TicketMantenimientoCreate } from "@/types/entities";
-import { ticketPriorityLabels } from "@/utils/labels";
+import { TicketPriority, TicketStatus } from "@/types/enums";
+import type { Propiedad, TicketMantenimiento, TicketMantenimientoCreate } from "@/types/entities";
+import { ticketPriorityLabels, ticketStatusLabels } from "@/utils/labels";
+
+function toForm(t: TicketMantenimiento): TicketMantenimientoCreate {
+  const { id: _id, created_at: _c, updated_at: _u, ...rest } = t;
+  return rest;
+}
 
 export function TicketFormModal({
   propiedades,
+  ticket,
   onClose,
 }: {
   propiedades: Propiedad[];
+  ticket?: TicketMantenimiento | null;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<TicketMantenimientoCreate>({
-    propiedad_id: propiedades[0]?.id ?? "",
-    contrato_id: null,
-    reportado_por: null,
-    titulo: "",
-    descripcion: "",
-    prioridad: TicketPriority.media,
-    estado: "abierto",
-    asignado_a: null,
-    costo_estimado: null,
-    costo_real: null,
-    fecha_apertura: new Date().toISOString().slice(0, 10),
-    fecha_cierre: null,
-  });
+  const isEdit = !!ticket;
+  const [form, setForm] = useState<TicketMantenimientoCreate>(
+    ticket
+      ? toForm(ticket)
+      : {
+          propiedad_id: propiedades[0]?.id ?? "",
+          contrato_id: null,
+          reportado_por: null,
+          titulo: "",
+          descripcion: "",
+          prioridad: TicketPriority.media,
+          estado: "abierto",
+          asignado_a: null,
+          costo_estimado: null,
+          costo_real: null,
+          fecha_apertura: new Date().toISOString().slice(0, 10),
+          fecha_cierre: null,
+        }
+  );
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: () => ticketsApi.create(form),
+    mutationFn: () => (isEdit ? ticketsApi.update(ticket!.id, form) : ticketsApi.create(form)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.tickets });
+      onClose();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => ticketsApi.remove(ticket!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.tickets });
       onClose();
@@ -43,7 +63,7 @@ export function TicketFormModal({
   });
 
   return (
-    <Modal title="Nuevo ticket de mantenimiento" onClose={onClose}>
+    <Modal title={isEdit ? "Editar ticket de mantenimiento" : "Nuevo ticket de mantenimiento"} onClose={onClose}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -94,26 +114,68 @@ export function TicketFormModal({
           />
         </Field>
 
-        <Field label="Prioridad">
-          <Select
-            value={form.prioridad}
-            onChange={(e) => setForm({ ...form, prioridad: e.target.value as TicketPriority })}
-          >
-            {Object.values(TicketPriority).map((p) => (
-              <option key={p} value={p}>
-                {ticketPriorityLabels[p]}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Prioridad">
+            <Select
+              value={form.prioridad}
+              onChange={(e) => setForm({ ...form, prioridad: e.target.value as TicketPriority })}
+            >
+              {Object.values(TicketPriority).map((p) => (
+                <option key={p} value={p}>
+                  {ticketPriorityLabels[p]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Estado">
+            <Select
+              value={form.estado}
+              onChange={(e) => {
+                const estado = e.target.value as TicketStatus;
+                setForm({
+                  ...form,
+                  estado,
+                  fecha_cierre:
+                    estado === TicketStatus.resuelto || estado === TicketStatus.cancelado
+                      ? (form.fecha_cierre ?? new Date().toISOString().slice(0, 10))
+                      : form.fecha_cierre,
+                });
+              }}
+            >
+              {Object.values(TicketStatus).map((s) => (
+                <option key={s} value={s}>
+                  {ticketStatusLabels[s]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={mutation.isPending || !form.propiedad_id}>
-            {mutation.isPending ? "Guardando…" : "Crear ticket"}
-          </Button>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            {isEdit && (
+              <Button
+                type="button"
+                variant="danger"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (confirm(`¿Eliminar el ticket "${ticket!.titulo}"?`)) {
+                    deleteMutation.mutate();
+                  }
+                }}
+              >
+                {deleteMutation.isPending ? "Eliminando…" : "Eliminar"}
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={mutation.isPending || !form.propiedad_id}>
+              {mutation.isPending ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear ticket"}
+            </Button>
+          </div>
         </div>
       </form>
     </Modal>

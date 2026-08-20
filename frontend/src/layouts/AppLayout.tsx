@@ -12,7 +12,7 @@ const navItems = [
 export function AppLayout() {
   return (
     <div className="min-h-screen bg-page">
-      <div className="mx-auto flex max-w-7xl">
+      <div className="flex">
         <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-surface px-4 py-6 md:flex">
           <div className="mb-8 px-2">
             <p className="text-sm font-semibold tracking-tight text-ink-primary">FLR PropTech</p>
@@ -38,11 +38,13 @@ export function AppLayout() {
           </nav>
         </aside>
 
-        <div className="flex-1 px-4 py-6 md:px-8">
+        <div className="min-w-0 flex-1 px-4 py-6 md:px-8">
           <header className="mb-4 flex items-center justify-between md:hidden">
             <p className="text-sm font-semibold text-ink-primary">FLR PropTech</p>
           </header>
-          <Outlet />
+          <div className="mx-auto max-w-[1600px]">
+            <Outlet />
+          </div>
         </div>
       </div>
     </div>

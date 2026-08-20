@@ -6,10 +6,12 @@ import { Card } from "@/components/ui/Card";
 import { useInquilinos } from "@/hooks/useEntities";
 import { InquilinoFormModal } from "@/features/inquilinos/InquilinoFormModal";
 import { tenantTypeLabels } from "@/utils/labels";
+import type { Inquilino } from "@/types/entities";
 
 export function InquilinosPage() {
   const { data, isLoading, error } = useInquilinos();
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Inquilino | null>(null);
 
   return (
     <div>
@@ -39,7 +41,11 @@ export function InquilinosPage() {
             </thead>
             <tbody className="divide-y divide-gridline">
               {data.map((i) => (
-                <tr key={i.id} className="hover:bg-page/60">
+                <tr
+                  key={i.id}
+                  className="cursor-pointer hover:bg-page/60"
+                  onClick={() => setEditing(i)}
+                >
                   <td className="px-4 py-3">
                     <p className="font-medium text-ink-primary">{i.nombre_razon_social}</p>
                     {i.representante_legal && (
@@ -66,6 +72,7 @@ export function InquilinosPage() {
       )}
 
       {showForm && <InquilinoFormModal onClose={() => setShowForm(false)} />}
+      {editing && <InquilinoFormModal inquilino={editing} onClose={() => setEditing(null)} />}
     </div>
   );
 }

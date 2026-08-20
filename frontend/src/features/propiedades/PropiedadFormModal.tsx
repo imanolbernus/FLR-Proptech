@@ -8,7 +8,7 @@ import { propiedadesApi } from "@/api/propiedades";
 import { ApiError } from "@/api/client";
 import { qk } from "@/hooks/useEntities";
 import { PropertyStatus, PropertyType } from "@/types/enums";
-import type { PropiedadCreate } from "@/types/entities";
+import type { Propiedad, PropiedadCreate } from "@/types/entities";
 import { propertyStatusLabels, propertyTypeLabels } from "@/utils/labels";
 
 const emptyForm: PropiedadCreate = {
@@ -30,20 +30,42 @@ const emptyForm: PropiedadCreate = {
   notas: "",
 };
 
-export function PropiedadFormModal({ onClose }: { onClose: () => void }) {
-  const [form, setForm] = useState<PropiedadCreate>(emptyForm);
+function toForm(p: Propiedad): PropiedadCreate {
+  const { id: _id, created_at: _c, updated_at: _u, ...rest } = p;
+  return rest;
+}
+
+export function PropiedadFormModal({
+  propiedad,
+  onClose,
+}: {
+  propiedad?: Propiedad | null;
+  onClose: () => void;
+}) {
+  const isEdit = !!propiedad;
+  const [form, setForm] = useState<PropiedadCreate>(propiedad ? toForm(propiedad) : emptyForm);
   const queryClient = useQueryClient();
+
+  const payload = () => ({
+    ...form,
+    numero_exterior: form.numero_exterior || null,
+    numero_interior: form.numero_interior || null,
+    colonia: form.colonia || null,
+    codigo_postal: form.codigo_postal || null,
+    notas: form.notas || null,
+  });
 
   const mutation = useMutation({
     mutationFn: () =>
-      propiedadesApi.create({
-        ...form,
-        numero_exterior: form.numero_exterior || null,
-        numero_interior: form.numero_interior || null,
-        colonia: form.colonia || null,
-        codigo_postal: form.codigo_postal || null,
-        notas: form.notas || null,
-      }),
+      isEdit ? propiedadesApi.update(propiedad!.id, payload()) : propiedadesApi.create(payload()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.propiedades });
+      onClose();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => propiedadesApi.remove(propiedad!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.propiedades });
       onClose();
@@ -51,7 +73,7 @@ export function PropiedadFormModal({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <Modal title="Nueva propiedad" onClose={onClose}>
+    <Modal title={isEdit ? "Editar propiedad" : "Nueva propiedad"} onClose={onClose}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -153,13 +175,31 @@ export function PropiedadFormModal({ onClose }: { onClose: () => void }) {
           La renta incluye IVA
         </label>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? "Guardando…" : "Guardar propiedad"}
-          </Button>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            {isEdit && (
+              <Button
+                type="button"
+                variant="danger"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (confirm(`¿Eliminar la propiedad "${propiedad!.nombre_referencia}"?`)) {
+                    deleteMutation.mutate();
+                  }
+                }}
+              >
+                {deleteMutation.isPending ? "Eliminando…" : "Eliminar"}
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? "Guardando…" : isEdit ? "Guardar cambios" : "Guardar propiedad"}
+            </Button>
+          </div>
         </div>
       </form>
     </Modal>
