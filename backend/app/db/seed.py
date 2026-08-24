@@ -59,10 +59,10 @@ def get_or_create_usuario(db: Session) -> Usuario:
         db.commit()
         db.refresh(existente)
         return existente
-
     usuario = Usuario(
-        nombre="Federico López Rodea",
+        nombre="FLR",
         email=email,
+    
         password_hash=get_password_hash(password),
         rol="admin",
     )
