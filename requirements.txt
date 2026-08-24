@@ -1,0 +1,16 @@
+# Instalado y probado end-to-end en este entorno (Python 3.11.15) el 20-Ago-2026:
+# migraciones con Alembic, arranque de FastAPI, siembra de datos reales del
+# portafolio y pruebas de los endpoints vía curl.
+
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+sqlalchemy==2.0.52
+psycopg[binary]==3.3.4
+pydantic==2.13.4
+pydantic-settings==2.15.0
+email-validator==2.3.0
+alembic==1.19.1
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1          # fijado <4.1: passlib 1.7.4 es incompatible con bcrypt>=4.1
+python-multipart==0.0.32
