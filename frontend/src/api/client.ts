@@ -2,6 +2,8 @@
 // tipa la respuesta y estandariza el manejo de errores contra la API
 // FastAPI (que devuelve {"detail": ...} en los códigos 4xx/5xx).
 
+import { clearToken, getToken } from "@/api/authToken";
+
 const API_BASE_URL: string =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://127.0.0.1:8000/api/v1";
 
@@ -17,13 +19,21 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken();
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
   });
+
+  if (res.status === 401) {
+    // Token ausente/vencido/inválido: limpiar sesión y mandar a /login.
+    clearToken();
+  }
 
   if (res.status === 204) {
     return undefined as T;
