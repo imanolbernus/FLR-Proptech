@@ -41,7 +41,7 @@ export function DashboardPage() {
     <div>
       <PageHeader
         title="Resumen del portafolio"
-        description="Federico López Rodea — 5 inmuebles en la Ciudad de México."
+        description="FLR — 5 inmuebles en la Ciudad de México."
       />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
