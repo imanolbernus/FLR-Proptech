@@ -40,18 +40,9 @@ from app.models.usuario import Usuario
 
 
 def get_or_create_usuario(db: Session) -> Usuario:
-    # Credenciales de acceso al sistema (no son datos de ningún contrato, son
-    # solo el login de la app). La contraseña se re-escribe en cada arranque
-    # a este valor conocido -- es la cuenta admin única de un sistema mono-
-    # usuario, así que es seguro dejarlo idempotente en vez de solo "crear si
-    # no existe". Cámbiala después desde /docs (PATCH /usuarios/{id}) o pide
-    # que se construya una pantalla de "cambiar contraseña".
-    # Nota: no usar dominios "reservados" (.local, .test, .invalid, etc.) --
-    # pydantic's EmailStr los rechaza al serializar la respuesta de /auth/me.
     email = "federico.lopez@flr-proptech.app"
     password = "G9thcej5oHSbVz"
-
-existente = db.query(Usuario).filter(Usuario.email == email).first()
+    existente = db.query(Usuario).filter(Usuario.email == email).first()
     if existente:
         existente.nombre = "FLR"
         existente.password_hash = get_password_hash(password)
@@ -62,7 +53,6 @@ existente = db.query(Usuario).filter(Usuario.email == email).first()
     usuario = Usuario(
         nombre="FLR",
         email=email,
-    
         password_hash=get_password_hash(password),
         rol="admin",
     )
@@ -141,9 +131,6 @@ def seed() -> None:
             "del inmueble (2015-2016) fue Mara Sport, S.A. de C.V. (no sembrada, sin contrato vigente).",
         )
 
-        # ------------------------------------------------------------------
-        # 1. Cuitláhuac 88-B
-        # ------------------------------------------------------------------
         p_88b = get_or_create_propiedad(
             db,
             usuario=federico,
@@ -176,9 +163,6 @@ def seed() -> None:
             "prórroga voluntaria bajo la cláusula INPC + 20 pp.",
         )
 
-        # ------------------------------------------------------------------
-        # 2. Cuitláhuac 88-A
-        # ------------------------------------------------------------------
         p_88a = get_or_create_propiedad(
             db,
             usuario=federico,
@@ -212,9 +196,6 @@ def seed() -> None:
             "contrato posterior a ene-2023 localizado.",
         )
 
-        # ------------------------------------------------------------------
-        # 3. Cuitláhuac 94
-        # ------------------------------------------------------------------
         p_94 = get_or_create_propiedad(
             db,
             usuario=federico,
@@ -246,9 +227,6 @@ def seed() -> None:
             "incremento de renta. Faltan contratos de 2020-2021 en el expediente.",
         )
 
-        # ------------------------------------------------------------------
-        # 4. Francisco Novoa 41
-        # ------------------------------------------------------------------
         p_novoa41 = get_or_create_propiedad(
             db,
             usuario=federico,
@@ -281,9 +259,6 @@ def seed() -> None:
             "prórroga voluntaria bajo la cláusula INPC + 20 pp.",
         )
 
-        # ------------------------------------------------------------------
-        # 5. Francisco Novoa 43
-        # ------------------------------------------------------------------
         p_novoa43 = get_or_create_propiedad(
             db,
             usuario=federico,
