@@ -1,56 +1,30 @@
-# FLR PropTech — Backend (Fase 2)
+# FLR PropTech
 
-API en FastAPI para el portafolio de 5 inmuebles de Federico López Rodea
-(Cuitláhuac 88-A, 88-B, 94, Francisco Novoa 41 y 43). Ya probada end-to-end
-en este entorno: migraciones con Alembic, arranque del servidor, siembra de
-los datos reales del portafolio y pruebas de los endpoints con curl.
+Sistema de gestión de propiedades en renta para el portafolio de Federico López Rodea
+(5 bodegas: Cuitláhuac 88-A, 88-B, 94, Francisco Novoa 41 y 43).
 
-## Setup rápido
+- `backend/` — API en FastAPI + PostgreSQL (SQLAlchemy, Alembic).
+- `frontend/` — Interfaz en React + Vite + TypeScript + Tailwind.
 
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+## Acceso
 
-cp .env.example .env   # ajustar DATABASE_URL si es necesario
+La app y el API ya piden inicio de sesión (antes eran públicos). Cuenta
+admin sembrada automáticamente al desplegar:
 
-# Crear rol y base de datos en PostgreSQL (ejemplo):
-#   CREATE ROLE flr_user LOGIN PASSWORD 'flr_password';
-#   CREATE DATABASE flr_proptech OWNER flr_user;
-#   -- pgcrypto (para gen_random_uuid()) requiere permisos de superusuario
-#   -- o que el rol tenga CREATE EXTENSION; en dev puedes hacer al rol SUPERUSER.
+- Correo: `federico.lopez@flr-proptech.app`
+- Contraseña: `G9thcej5oHSbVz`
 
-alembic upgrade head          # aplica el esquema (equivalente a app/db/schema.sql)
-python -m app.db.seed         # siembra las 5 propiedades / 3 inquilinos / 5 contratos reales
-uvicorn app.main:app --reload # arranca la API en http://127.0.0.1:8000
-```
+Cámbiala en cuanto puedas desde `/docs` del backend (`PATCH /usuarios/{id}`,
+autenticado con el botón "Authorize" usando este mismo login).
 
-Documentación interactiva (Swagger) en `http://127.0.0.1:8000/docs`.
+## Actualizar el código en GitHub
 
-## Qué incluye esta fase
-
-- Modelos SQLAlchemy 2.0 y schemas Pydantic v2 para las 6 entidades de la Fase 1.
-- CRUD genérico (`app/crud/base.py`) + CRUD específico por entidad con filtros
-  útiles (contratos por propiedad, pagos por contrato/estado, tickets por propiedad).
-- Endpoints REST completos (`GET` lista, `GET` por id, `POST`, `PATCH`, `DELETE`)
-  para usuarios, propiedades, inquilinos, contratos, pagos y tickets de mantenimiento.
-- Regla de negocio aplicada en el endpoint de contratos: no se puede crear un
-  segundo contrato `activo` para la misma propiedad (además del índice único
-  parcial ya existente a nivel de base de datos).
-- Alembic configurado y con la migración inicial (`0001_initial_schema`),
-  probada con `upgrade` y `downgrade` completos.
-- `app/db/seed.py`: siembra idempotente con los datos REALES de los 5 inmuebles
-  (el último contrato conocido de cada uno), documentando explícitamente qué
-  datos no están confirmados en los resúmenes de contrato (RFC, superficie en
-  m², email/teléfono de contacto) en vez de inventarlos.
-
-## Pendiente para próximas fases
-
-- Autenticación real (endpoint de login que devuelva el JWT; por ahora solo
-  existen las utilidades en `app/core/security.py`).
-- Endpoints protegidos por rol (`admin` / `property_manager` / `viewer`).
-- Carga del historial completo de contratos por inmueble (hasta 11 por
-  inmueble) si se decide llevarlo a la base de datos, no solo el más reciente.
-- Registrar pagos y tickets reales conforme se generen (no hay datos
-  documentados de pagos/mantenimiento todavía, así que no se sembraron).
+1. Descomprime este zip. Debe quedar una carpeta con `backend/`, `frontend/`,
+   `README.md` y `.gitignore` adentro.
+2. Entra a tu repositorio en GitHub, ve a "Add file" → "Upload files".
+3. Selecciona los 4 elementos de adentro de la carpeta descomprimida
+   (`backend`, `frontend`, `README.md`, `.gitignore`) y arrástralos a la zona
+   de subida. GitHub reemplaza automáticamente los archivos que ya existían
+   con el mismo nombre y agrega los nuevos.
+4. Baja y da clic en "Commit changes" — Render detecta el cambio y despliega
+   solo, sin que tengas que hacer nada más.
