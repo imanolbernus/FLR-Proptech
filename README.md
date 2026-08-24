@@ -1,49 +1,56 @@
-# FLR PropTech — Frontend (Fase 3)
+# FLR PropTech — Backend (Fase 2)
 
-React + Vite + TypeScript + Tailwind CSS v4, conectado al backend de la Fase 2.
-Probado end-to-end contra la API real (Postgres 16 + FastAPI corriendo en este
-mismo entorno): se navegaron las 6 páginas con Playwright/Chromium, se
-verificó que los datos reales del portafolio se muestran correctamente, y se
-probaron los formularios de creación (propiedad y pago) contra la API real.
+API en FastAPI para el portafolio de 5 inmuebles de Federico López Rodea
+(Cuitláhuac 88-A, 88-B, 94, Francisco Novoa 41 y 43). Ya probada end-to-end
+en este entorno: migraciones con Alembic, arranque del servidor, siembra de
+los datos reales del portafolio y pruebas de los endpoints con curl.
 
 ## Setup rápido
 
 ```bash
-cd frontend
-npm install
-cp .env.example .env.local   # ajustar VITE_API_BASE_URL si el backend no está en localhost:8000
-npm run dev                  # http://localhost:5173
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+cp .env.example .env   # ajustar DATABASE_URL si es necesario
+
+# Crear rol y base de datos en PostgreSQL (ejemplo):
+#   CREATE ROLE flr_user LOGIN PASSWORD 'flr_password';
+#   CREATE DATABASE flr_proptech OWNER flr_user;
+#   -- pgcrypto (para gen_random_uuid()) requiere permisos de superusuario
+#   -- o que el rol tenga CREATE EXTENSION; en dev puedes hacer al rol SUPERUSER.
+
+alembic upgrade head          # aplica el esquema (equivalente a app/db/schema.sql)
+python -m app.db.seed         # siembra las 5 propiedades / 3 inquilinos / 5 contratos reales
+uvicorn app.main:app --reload # arranca la API en http://127.0.0.1:8000
 ```
 
-Requiere el backend de la Fase 2 corriendo (`uvicorn app.main:app --reload`
-en `backend/`) con la base de datos migrada y sembrada.
+Documentación interactiva (Swagger) en `http://127.0.0.1:8000/docs`.
 
 ## Qué incluye esta fase
 
-- **Resumen (dashboard):** KPIs del portafolio (inmuebles, renta mensual
-  conocida +IVA, inquilinos, contratos en prórroga) + gráfica de barras de
-  renta por inmueble + lista de estado de contratos. Los números coinciden
-  con los documentados en el proyecto ($226,810.00 de renta mensual conocida
-  2025, $2,721,720.00 anualizado).
-- **Propiedades:** tabla del portafolio + formulario de alta.
-- **Inquilinos:** tabla + formulario de alta (persona física/moral).
-- **Contratos:** tabla de solo lectura con inmueble, inquilino, vigencia,
-  renta, depósito, mora diaria y estado (resuelve las relaciones contra
-  propiedades/inquilinos en el cliente).
-- **Pagos:** tabla + formulario de registro de pago por contrato.
-- **Mantenimiento:** tabla + formulario de alta de tickets.
-- Cliente API tipado (`src/api/`) que espeja los schemas Pydantic del
-  backend, con manejo de errores contra el formato `{"detail": ...}` de FastAPI.
-- Paleta de color y specs de marca (barras, badges de estado) tomados de la
-  skill de dataviz del sistema — colores de estado (`good/warning/serious/
-  critical`) reservados y nunca reusados como color de serie.
-- `@tanstack/react-query` para cache/loading/error de las peticiones.
+- Modelos SQLAlchemy 2.0 y schemas Pydantic v2 para las 6 entidades de la Fase 1.
+- CRUD genérico (`app/crud/base.py`) + CRUD específico por entidad con filtros
+  útiles (contratos por propiedad, pagos por contrato/estado, tickets por propiedad).
+- Endpoints REST completos (`GET` lista, `GET` por id, `POST`, `PATCH`, `DELETE`)
+  para usuarios, propiedades, inquilinos, contratos, pagos y tickets de mantenimiento.
+- Regla de negocio aplicada en el endpoint de contratos: no se puede crear un
+  segundo contrato `activo` para la misma propiedad (además del índice único
+  parcial ya existente a nivel de base de datos).
+- Alembic configurado y con la migración inicial (`0001_initial_schema`),
+  probada con `upgrade` y `downgrade` completos.
+- `app/db/seed.py`: siembra idempotente con los datos REALES de los 5 inmuebles
+  (el último contrato conocido de cada uno), documentando explícitamente qué
+  datos no están confirmados en los resúmenes de contrato (RFC, superficie en
+  m², email/teléfono de contacto) en vez de inventarlos.
 
 ## Pendiente para próximas fases
 
-- Edición/eliminación desde la UI (el backend ya soporta `PATCH`/`DELETE`;
-  falta conectarlos en Contratos, Pagos y Tickets).
-- Pantalla de login (el backend aún no expone un endpoint de autenticación).
-- Filtros y paginación reales en las tablas (hoy se listan hasta 100 registros).
-- Vista de detalle por inmueble (historial completo de contratos, pagos y
-  tickets en una sola pantalla).
+- Autenticación real (endpoint de login que devuelva el JWT; por ahora solo
+  existen las utilidades en `app/core/security.py`).
+- Endpoints protegidos por rol (`admin` / `property_manager` / `viewer`).
+- Carga del historial completo de contratos por inmueble (hasta 11 por
+  inmueble) si se decide llevarlo a la base de datos, no solo el más reciente.
+- Registrar pagos y tickets reales conforme se generen (no hay datos
+  documentados de pagos/mantenimiento todavía, así que no se sembraron).
