@@ -44,11 +44,8 @@ def get_or_create_usuario(db: Session) -> Usuario:
     existente = db.query(Usuario).filter(Usuario.email == email).first()
     if existente:
         return existente
-    usuario = Usuario(
-        nombre="Federico López Rodea",
-        email=email,
-        password_hash=get_password_hash("cambiar-esta-contrasena"),
-        rol="admin",
+        email = "federico.lopez@flr-proptech.app"
+    password = "G9thcej5oHSbVz"
     )
     db.add(usuario)
     db.commit()
