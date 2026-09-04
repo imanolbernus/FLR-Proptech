@@ -1,79 +1,30 @@
-// Espejo de app/schemas/enums.py del backend. Mantener en sincronía manual.
+"""Utilidades de seguridad: hashing de contraseñas y tokens JWT."""
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
-export const UserRole = {
-  admin: "admin",
-  property_manager: "property_manager",
-  viewer: "viewer",
-} as const;
-export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+from jose import jwt
+from passlib.context import CryptContext
 
-export const PropertyType = {
-  bodega: "bodega",
-  oficina: "oficina",
-  bodega_oficina: "bodega_oficina",
-  local_comercial: "local_comercial",
-  nave_industrial: "nave_industrial",
-  terreno: "terreno",
-  departamento: "departamento",
-  casa: "casa",
-  otro: "otro",
-} as const;
-export type PropertyType = (typeof PropertyType)[keyof typeof PropertyType];
+from app.core.config import settings
 
-export const PropertyStatus = {
-  disponible: "disponible",
-  ocupada: "ocupada",
-  en_mantenimiento: "en_mantenimiento",
-  inactiva: "inactiva",
-} as const;
-export type PropertyStatus = (typeof PropertyStatus)[keyof typeof PropertyStatus];
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-export const TenantType = {
-  persona_fisica: "persona_fisica",
-  persona_moral: "persona_moral",
-} as const;
-export type TenantType = (typeof TenantType)[keyof typeof TenantType];
 
-export const ContractStatus = {
-  borrador: "borrador",
-  activo: "activo",
-  vencido: "vencido",
-  renovado: "renovado",
-  terminado_anticipadamente: "terminado_anticipadamente",
-} as const;
-export type ContractStatus = (typeof ContractStatus)[keyof typeof ContractStatus];
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
 
-export const PaymentStatus = {
-  pendiente: "pendiente",
-  pagado: "pagado",
-  atrasado: "atrasado",
-  pago_parcial: "pago_parcial",
-  cancelado: "cancelado",
-} as const;
-export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus];
 
-export const PaymentMethod = {
-  transferencia: "transferencia",
-  efectivo: "efectivo",
-  cheque: "cheque",
-  deposito_bancario: "deposito_bancario",
-  tarjeta: "tarjeta",
-  otro: "otro",
-} as const;
-export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod];
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
 
-export const TicketPriority = {
-  baja: "baja",
-  media: "media",
-  alta: "alta",
-  urgente: "urgente",
-} as const;
-export type TicketPriority = (typeof TicketPriority)[keyof typeof TicketPriority];
 
-export const TicketStatus = {
-  abierto: "abierto",
-  en_proceso: "en_proceso",
-  resuelto: "resuelto",
-  cancelado: "cancelado",
-} as const;
-export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
+def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    to_encode: dict[str, Any] = {"exp": expire, "sub": subject}
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_access_token(token: str) -> dict[str, Any]:
+    return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])

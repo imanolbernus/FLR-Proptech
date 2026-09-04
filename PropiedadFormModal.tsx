@@ -1,207 +1,28 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Modal } from "@/components/ui/Modal";
-import { Field, Input, Select } from "@/components/ui/FormField";
-import { Button } from "@/components/ui/Button";
-import { ErrorState } from "@/components/common/QueryStates";
-import { propiedadesApi } from "@/api/propiedades";
-import { ApiError } from "@/api/client";
-import { qk } from "@/hooks/useEntities";
-import { PropertyStatus, PropertyType } from "@/types/enums";
-import type { Propiedad, PropiedadCreate } from "@/types/entities";
-import { propertyStatusLabels, propertyTypeLabels } from "@/utils/labels";
-
-const emptyForm: PropiedadCreate = {
-  usuario_id: null,
-  nombre_referencia: "",
-  calle: "",
-  numero_exterior: "",
-  numero_interior: "",
-  colonia: "",
-  ciudad: "Ciudad de México",
-  estado_republica: "Ciudad de México",
-  codigo_postal: "",
-  pais: "México",
-  tipo: PropertyType.bodega,
-  estado_ocupacion: PropertyStatus.disponible,
-  superficie_m2: null,
-  renta_base: "",
-  renta_incluye_iva: true,
-  notas: "",
-};
-
-function toForm(p: Propiedad): PropiedadCreate {
-  const { id: _id, created_at: _c, updated_at: _u, ...rest } = p;
-  return rest;
+export function LoadingState({ label = "Cargando…" }: { label?: string }) {
+  return (
+    <div className="flex items-center gap-3 py-12 text-sm text-ink-secondary">
+      <span
+        className="h-4 w-4 animate-spin rounded-full border-2 border-brand-450 border-t-transparent"
+        aria-hidden
+      />
+      {label}
+    </div>
+  );
 }
 
-export function PropiedadFormModal({
-  propiedad,
-  onClose,
-}: {
-  propiedad?: Propiedad | null;
-  onClose: () => void;
-}) {
-  const isEdit = !!propiedad;
-  const [form, setForm] = useState<PropiedadCreate>(propiedad ? toForm(propiedad) : emptyForm);
-  const queryClient = useQueryClient();
-
-  const payload = () => ({
-    ...form,
-    numero_exterior: form.numero_exterior || null,
-    numero_interior: form.numero_interior || null,
-    colonia: form.colonia || null,
-    codigo_postal: form.codigo_postal || null,
-    notas: form.notas || null,
-  });
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      isEdit ? propiedadesApi.update(propiedad!.id, payload()) : propiedadesApi.create(payload()),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: qk.propiedades });
-      onClose();
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: () => propiedadesApi.remove(propiedad!.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: qk.propiedades });
-      onClose();
-    },
-  });
-
+export function ErrorState({ message }: { message: string }) {
   return (
-    <Modal title={isEdit ? "Editar propiedad" : "Nueva propiedad"} onClose={onClose}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          mutation.mutate();
-        }}
-      >
-        {mutation.isError && (
-          <div className="mb-3">
-            <ErrorState
-              message={
-                mutation.error instanceof ApiError
-                  ? JSON.stringify(mutation.error.detail)
-                  : "No se pudo crear la propiedad."
-              }
-            />
-          </div>
-        )}
+    <div className="rounded-lg bg-status-critical/10 px-4 py-3 text-sm text-status-critical ring-1 ring-status-critical/20">
+      {message}
+    </div>
+  );
+}
 
-        <Field label="Nombre de referencia">
-          <Input
-            required
-            value={form.nombre_referencia}
-            onChange={(e) => setForm({ ...form, nombre_referencia: e.target.value })}
-            placeholder="Ej. Cuitláhuac 88-C"
-          />
-        </Field>
-
-        <div className="grid grid-cols-3 gap-2">
-          <div className="col-span-2">
-            <Field label="Calle">
-              <Input
-                required
-                value={form.calle}
-                onChange={(e) => setForm({ ...form, calle: e.target.value })}
-              />
-            </Field>
-          </div>
-          <Field label="Número">
-            <Input
-              value={form.numero_exterior ?? ""}
-              onChange={(e) => setForm({ ...form, numero_exterior: e.target.value })}
-            />
-          </Field>
-        </div>
-
-        <Field label="Colonia">
-          <Input
-            value={form.colonia ?? ""}
-            onChange={(e) => setForm({ ...form, colonia: e.target.value })}
-          />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Tipo de inmueble">
-            <Select
-              value={form.tipo}
-              onChange={(e) => setForm({ ...form, tipo: e.target.value as PropertyType })}
-            >
-              {Object.values(PropertyType).map((t) => (
-                <option key={t} value={t}>
-                  {propertyTypeLabels[t]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Estado de ocupación">
-            <Select
-              value={form.estado_ocupacion}
-              onChange={(e) =>
-                setForm({ ...form, estado_ocupacion: e.target.value as PropertyStatus })
-              }
-            >
-              {Object.values(PropertyStatus).map((s) => (
-                <option key={s} value={s}>
-                  {propertyStatusLabels[s]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-
-        <Field label="Renta base mensual (MXN)">
-          <Input
-            required
-            type="number"
-            step="0.01"
-            min="0"
-            value={form.renta_base}
-            onChange={(e) => setForm({ ...form, renta_base: e.target.value })}
-          />
-        </Field>
-
-        <label className="mb-4 flex items-center gap-2 text-sm text-ink-secondary">
-          <input
-            type="checkbox"
-            checked={form.renta_incluye_iva}
-            onChange={(e) => setForm({ ...form, renta_incluye_iva: e.target.checked })}
-          />
-          La renta incluye IVA
-        </label>
-
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            {isEdit && (
-              <Button
-                type="button"
-                variant="danger"
-                disabled={deleteMutation.isPending}
-                onClick={() => {
-                  if (confirm(`¿Eliminar la propiedad "${propiedad!.nombre_referencia}"?`)) {
-                    deleteMutation.mutate();
-                  }
-                }}
-              >
-                {deleteMutation.isPending ? "Eliminando…" : "Eliminar"}
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Guardando…" : isEdit ? "Guardar cambios" : "Guardar propiedad"}
-            </Button>
-          </div>
-        </div>
-      </form>
-    </Modal>
+export function EmptyState({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
+      <p className="text-sm font-medium text-ink-primary">{title}</p>
+      {description && <p className="mt-1 text-sm text-ink-secondary">{description}</p>}
+    </div>
   );
 }

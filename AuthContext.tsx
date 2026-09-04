@@ -1,70 +1,59 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { fetchMe, login as apiLogin, type AuthUser } from "@/api/auth";
-import { clearToken, getToken, setToken } from "@/api/authToken";
+// Cliente HTTP mínimo sobre fetch. Sin dependencias externas: solo
+// tipa la respuesta y estandariza el manejo de errores contra la API
+// FastAPI (que devuelve {"detail": ...} en los códigos 4xx/5xx).
 
-interface AuthContextValue {
-  user: AuthUser | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+import { clearToken, getToken } from "@/api/authToken";
+
+export const API_BASE_URL: string =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://127.0.0.1:8000/api/v1";
+
+export class ApiError extends Error {
+  status: number;
+  detail: unknown;
+
+  constructor(status: number, detail: unknown) {
+    super(typeof detail === "string" ? detail : `Error HTTP ${status}`);
+    this.status = status;
+    this.detail = detail;
+  }
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken();
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers ?? {}),
+    },
+  });
 
-  async function hydrate() {
-    const token = getToken();
-    if (!token) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-    try {
-      const me = await fetchMe(token);
-      setUser(me);
-    } catch {
-      clearToken();
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    hydrate();
-
-    // El cliente HTTP dispara este evento cuando cualquier request recibe un
-    // 401 (token vencido/inválido) -- aquí lo reflejamos en el estado global.
-    const onLogout = () => setUser(null);
-    window.addEventListener("flr-auth-logout", onLogout);
-    return () => window.removeEventListener("flr-auth-logout", onLogout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function login(email: string, password: string) {
-    const token = await apiLogin(email, password);
-    setToken(token);
-    const me = await fetchMe(token);
-    setUser(me);
-  }
-
-  function logout() {
+  if (res.status === 401) {
+    // Token ausente/vencido/inválido: limpiar sesión y mandar a /login.
     clearToken();
-    setUser(null);
   }
 
-  return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  const body = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const detail = body && typeof body === "object" && "detail" in body ? body.detail : body;
+    throw new ApiError(res.status, detail);
+  }
+
+  return body as T;
 }
 
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth debe usarse dentro de <AuthProvider>");
-  return ctx;
-}
+export const apiClient = {
+  get: <T>(path: string) => request<T>(path, { method: "GET" }),
+  post: <T>(path: string, data: unknown) =>
+    request<T>(path, { method: "POST", body: JSON.stringify(data) }),
+  patch: <T>(path: string, data: unknown) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (path: string) => request<void>(path, { method: "DELETE" }),
+};

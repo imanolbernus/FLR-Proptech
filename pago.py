@@ -1,45 +1,38 @@
 import uuid
-from datetime import date, datetime
-from decimal import Decimal
+from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict
 
-from app.schemas.enums import PaymentMethod, PaymentStatus
+from app.schemas.enums import TenantType
 
 
-class PagoBase(BaseModel):
-    contrato_id: uuid.UUID
-    monto: Decimal
-    fecha_vencimiento: date
-    fecha_pago: date | None = None
-    estado: PaymentStatus = PaymentStatus.pendiente
-    metodo_pago: PaymentMethod | None = None
-    comprobante_url: str | None = None
+class InquilinoBase(BaseModel):
+    tipo_persona: TenantType = TenantType.persona_fisica
+    nombre_razon_social: str
+    rfc: str | None = None
+    representante_legal: str | None = None
+    email: str | None = None
+    telefono: str | None = None
+    direccion: str | None = None
     notas: str | None = None
 
-    @model_validator(mode="after")
-    def validar_pago(self) -> "PagoBase":
-        if self.estado == PaymentStatus.pagado and self.fecha_pago is None:
-            raise ValueError("fecha_pago es obligatoria cuando estado='pagado'")
-        return self
 
-
-class PagoCreate(PagoBase):
+class InquilinoCreate(InquilinoBase):
     pass
 
 
-class PagoUpdate(BaseModel):
-    contrato_id: uuid.UUID | None = None
-    monto: Decimal | None = None
-    fecha_vencimiento: date | None = None
-    fecha_pago: date | None = None
-    estado: PaymentStatus | None = None
-    metodo_pago: PaymentMethod | None = None
-    comprobante_url: str | None = None
+class InquilinoUpdate(BaseModel):
+    tipo_persona: TenantType | None = None
+    nombre_razon_social: str | None = None
+    rfc: str | None = None
+    representante_legal: str | None = None
+    email: str | None = None
+    telefono: str | None = None
+    direccion: str | None = None
     notas: str | None = None
 
 
-class PagoRead(PagoBase):
+class InquilinoRead(InquilinoBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID

@@ -1,30 +1,29 @@
-"""Utilidades de seguridad: hashing de contraseñas y tokens JWT."""
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from jose import jwt
-from passlib.context import CryptContext
-
-from app.core.config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.crud.base import CRUDBase
+from app.models.pago import Pago
+from app.schemas.pago import PagoCreate, PagoUpdate
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+class CRUDPago(CRUDBase[Pago, PagoCreate, PagoUpdate]):
+    def get_multi_by_contrato(
+        self, db: Session, *, contrato_id, skip: int = 0, limit: int = 100
+    ) -> list[Pago]:
+        stmt = (
+            select(Pago)
+            .where(Pago.contrato_id == contrato_id)
+            .order_by(Pago.fecha_vencimiento.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        return list(db.scalars(stmt).all())
+
+    def get_multi_by_estado(
+        self, db: Session, *, estado: str, skip: int = 0, limit: int = 100
+    ) -> list[Pago]:
+        stmt = select(Pago).where(Pago.estado == estado).offset(skip).limit(limit)
+        return list(db.scalars(stmt).all())
 
 
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    to_encode: dict[str, Any] = {"exp": expire, "sub": subject}
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-
-
-def decode_access_token(token: str) -> dict[str, Any]:
-    return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+pago = CRUDPago(Pago)

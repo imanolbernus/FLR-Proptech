@@ -1,72 +1,55 @@
-"""Enums Python que reflejan los tipos ENUM de PostgreSQL definidos en
-app/db/schema.sql. Deben mantenerse en sincronía manualmente."""
-from enum import Enum
+import uuid
+from datetime import date, datetime
+from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, model_validator
+
+from app.schemas.enums import TicketPriority, TicketStatus
 
 
-class UserRole(str, Enum):
-    admin = "admin"
-    property_manager = "property_manager"
-    viewer = "viewer"
+class TicketMantenimientoBase(BaseModel):
+    propiedad_id: uuid.UUID
+    contrato_id: uuid.UUID | None = None
+    reportado_por: uuid.UUID | None = None
+    titulo: str
+    descripcion: str
+    prioridad: TicketPriority = TicketPriority.media
+    estado: TicketStatus = TicketStatus.abierto
+    asignado_a: str | None = None
+    costo_estimado: Decimal | None = None
+    costo_real: Decimal | None = None
+    fecha_apertura: date | None = None
+    fecha_cierre: date | None = None
+
+    @model_validator(mode="after")
+    def validar_cierre(self) -> "TicketMantenimientoBase":
+        if self.estado in (TicketStatus.resuelto, TicketStatus.cancelado) and self.fecha_cierre is None:
+            raise ValueError("fecha_cierre es obligatoria cuando el ticket está resuelto o cancelado")
+        return self
 
 
-class PropertyType(str, Enum):
-    bodega = "bodega"
-    oficina = "oficina"
-    bodega_oficina = "bodega_oficina"
-    local_comercial = "local_comercial"
-    nave_industrial = "nave_industrial"
-    terreno = "terreno"
-    departamento = "departamento"
-    casa = "casa"
-    otro = "otro"
+class TicketMantenimientoCreate(TicketMantenimientoBase):
+    pass
 
 
-class PropertyStatus(str, Enum):
-    disponible = "disponible"
-    ocupada = "ocupada"
-    en_mantenimiento = "en_mantenimiento"
-    inactiva = "inactiva"
+class TicketMantenimientoUpdate(BaseModel):
+    propiedad_id: uuid.UUID | None = None
+    contrato_id: uuid.UUID | None = None
+    reportado_por: uuid.UUID | None = None
+    titulo: str | None = None
+    descripcion: str | None = None
+    prioridad: TicketPriority | None = None
+    estado: TicketStatus | None = None
+    asignado_a: str | None = None
+    costo_estimado: Decimal | None = None
+    costo_real: Decimal | None = None
+    fecha_apertura: date | None = None
+    fecha_cierre: date | None = None
 
 
-class TenantType(str, Enum):
-    persona_fisica = "persona_fisica"
-    persona_moral = "persona_moral"
+class TicketMantenimientoRead(TicketMantenimientoBase):
+    model_config = ConfigDict(from_attributes=True)
 
-
-class ContractStatus(str, Enum):
-    borrador = "borrador"
-    activo = "activo"
-    vencido = "vencido"
-    renovado = "renovado"
-    terminado_anticipadamente = "terminado_anticipadamente"
-
-
-class PaymentStatus(str, Enum):
-    pendiente = "pendiente"
-    pagado = "pagado"
-    atrasado = "atrasado"
-    pago_parcial = "pago_parcial"
-    cancelado = "cancelado"
-
-
-class PaymentMethod(str, Enum):
-    transferencia = "transferencia"
-    efectivo = "efectivo"
-    cheque = "cheque"
-    deposito_bancario = "deposito_bancario"
-    tarjeta = "tarjeta"
-    otro = "otro"
-
-
-class TicketPriority(str, Enum):
-    baja = "baja"
-    media = "media"
-    alta = "alta"
-    urgente = "urgente"
-
-
-class TicketStatus(str, Enum):
-    abierto = "abierto"
-    en_proceso = "en_proceso"
-    resuelto = "resuelto"
-    cancelado = "cancelado"
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime

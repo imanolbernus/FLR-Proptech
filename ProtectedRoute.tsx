@@ -1,21 +1,11 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { apiClient } from "./client";
+import type { Pago, PagoCreate } from "@/types/entities";
 
-export function ProtectedRoute() {
-  const { user, isLoading } = useAuth();
-  const location = useLocation();
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-page">
-        <p className="text-sm text-ink-muted">Cargando…</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
-  }
-
-  return <Outlet />;
-}
+export const pagosApi = {
+  list: (contratoId?: string) =>
+    apiClient.get<Pago[]>(`/pagos/?limit=100${contratoId ? `&contrato_id=${contratoId}` : ""}`),
+  get: (id: string) => apiClient.get<Pago>(`/pagos/${id}`),
+  create: (data: PagoCreate) => apiClient.post<Pago>("/pagos/", data),
+  update: (id: string, data: Partial<PagoCreate>) => apiClient.patch<Pago>(`/pagos/${id}`, data),
+  remove: (id: string) => apiClient.delete(`/pagos/${id}`),
+};

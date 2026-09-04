@@ -1,69 +1,42 @@
-import { NavLink, Outlet } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+"""Agrega documentos (adjuntos como estados de cuenta, contratos escaneados,
+comprobantes, etc.) que pueden vincularse a una o más propiedades.
 
-const navItems = [
-  { to: "/", label: "Resumen", end: true },
-  { to: "/propiedades", label: "Propiedades" },
-  { to: "/inquilinos", label: "Inquilinos" },
-  { to: "/contratos", label: "Contratos" },
-  { to: "/pagos", label: "Pagos" },
-  { to: "/mantenimiento", label: "Mantenimiento" },
-];
+Revision ID: 0002_documentos
+Revises: 0001_initial_schema
+Create Date: 2026-09-04
+"""
+from alembic import op
 
-export function AppLayout() {
-  const { user, logout } = useAuth();
+# revision identifiers, used by Alembic.
+revision = "0002_documentos"
+down_revision = "0001_initial_schema"
+branch_labels = None
+depends_on = None
 
-  return (
-    <div className="min-h-screen bg-page">
-      <div className="flex">
-        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-surface px-4 py-6 md:flex">
-          <div className="mb-8 px-2">
-            <p className="text-sm font-semibold tracking-tight text-ink-primary">FLR PropTech</p>
-            <p className="text-xs text-ink-muted">Portafolio de rentas</p>
-          </div>
-          <nav className="flex flex-col gap-1">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-brand-100 text-brand-700"
-                      : "text-ink-secondary hover:bg-page hover:text-ink-primary"
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
 
-          <div className="mt-auto border-t border-border pt-4">
-            {user && (
-              <p className="truncate px-2 text-xs text-ink-muted" title={user.email}>
-                {user.nombre}
-              </p>
-            )}
-            <button
-              onClick={logout}
-              className="mt-1 w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-ink-secondary transition-colors hover:bg-page hover:text-ink-primary"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        </aside>
+def upgrade() -> None:
+    op.execute("""
+        CREATE TABLE documentos (
+            id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            nombre_archivo  VARCHAR(255) NOT NULL,
+            tipo_contenido  VARCHAR(150) NOT NULL,
+            tamano_bytes    INTEGER NOT NULL CHECK (tamano_bytes >= 0),
+            descripcion     TEXT,
+            contenido       BYTEA NOT NULL,
+            creado_en       TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+    """)
 
-        <div className="min-w-0 flex-1 px-4 py-6 md:px-8">
-          <header className="mb-4 flex items-center justify-between md:hidden">
-            <p className="text-sm font-semibold text-ink-primary">FLR PropTech</p>
-          </header>
-          <div className="mx-auto max-w-[1600px]">
-            <Outlet />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+    op.execute("""
+        CREATE TABLE documento_propiedades (
+            documento_id    UUID NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+            propiedad_id    UUID NOT NULL REFERENCES propiedades(id) ON DELETE CASCADE,
+            PRIMARY KEY (documento_id, propiedad_id)
+        );
+    """)
+    op.execute("CREATE INDEX idx_documento_propiedades_propiedad_id ON documento_propiedades(propiedad_id);")
+
+
+def downgrade() -> None:
+    op.execute("DROP TABLE IF EXISTS documento_propiedades CASCADE;")
+    op.execute("DROP TABLE IF EXISTS documentos CASCADE;")

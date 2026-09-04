@@ -1,49 +1,20 @@
-"""CRUD genérico reutilizable por las 6 entidades del dominio."""
-import uuid
-from typing import Any, Generic, TypeVar
+"""Importa todos los modelos para que SQLAlchemy configure las relaciones
+entre ellos correctamente (evita errores de mapeo por referencias circulares
+en forma de string)."""
+from app.models.usuario import Usuario  # noqa: F401
+from app.models.propiedad import Propiedad  # noqa: F401
+from app.models.inquilino import Inquilino  # noqa: F401
+from app.models.contrato import Contrato  # noqa: F401
+from app.models.pago import Pago  # noqa: F401
+from app.models.ticket_mantenimiento import TicketMantenimiento  # noqa: F401
+from app.models.documento import Documento  # noqa: F401
 
-from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from app.core.database import Base
-
-ModelType = TypeVar("ModelType", bound=Base)
-CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
-UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
-
-
-class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
-    def __init__(self, model: type[ModelType]) -> None:
-        self.model = model
-
-    def get(self, db: Session, id: uuid.UUID) -> ModelType | None:
-        return db.get(self.model, id)
-
-    def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> list[ModelType]:
-        stmt = select(self.model).offset(skip).limit(limit)
-        return list(db.scalars(stmt).all())
-
-    def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
-        obj_data = obj_in.model_dump()
-        db_obj = self.model(**obj_data)
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
-
-    def update(self, db: Session, *, db_obj: ModelType, obj_in: UpdateSchemaType) -> ModelType:
-        update_data: dict[str, Any] = obj_in.model_dump(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(db_obj, field, value)
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
-
-    def remove(self, db: Session, *, id: uuid.UUID) -> ModelType | None:
-        db_obj = db.get(self.model, id)
-        if db_obj is not None:
-            db.delete(db_obj)
-            db.commit()
-        return db_obj
+__all__ = [
+    "Usuario",
+    "Propiedad",
+    "Inquilino",
+    "Contrato",
+    "Pago",
+    "TicketMantenimiento",
+    "Documento",
+]

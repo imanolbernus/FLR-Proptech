@@ -1,59 +1,33 @@
 import uuid
-from datetime import date, datetime
-from decimal import Decimal
+from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr
 
-from app.schemas.enums import ContractStatus
-
-
-class ContratoBase(BaseModel):
-    propiedad_id: uuid.UUID
-    inquilino_id: uuid.UUID
-    fecha_inicio: date
-    fecha_fin: date
-    renta_mensual: Decimal
-    renta_incluye_iva: bool = True
-    deposito_garantia: Decimal = Decimal("0")
-    penalizacion_mora_diaria: Decimal = Decimal("0")
-    ajuste_indexado_inpc: bool = True
-    margen_ajuste_pp: Decimal | None = None
-    uso_permitido: str | None = None
-    jurisdiccion: str | None = None
-    estado: ContractStatus = ContractStatus.activo
-    archivo_url: str | None = None
-    notas: str | None = None
-
-    @model_validator(mode="after")
-    def validar_fechas(self) -> "ContratoBase":
-        if self.fecha_fin <= self.fecha_inicio:
-            raise ValueError("fecha_fin debe ser posterior a fecha_inicio")
-        return self
+from app.schemas.enums import UserRole
 
 
-class ContratoCreate(ContratoBase):
-    pass
+class UsuarioBase(BaseModel):
+    nombre: str
+    email: EmailStr
+    rol: UserRole = UserRole.property_manager
+    telefono: str | None = None
+    activo: bool = True
 
 
-class ContratoUpdate(BaseModel):
-    propiedad_id: uuid.UUID | None = None
-    inquilino_id: uuid.UUID | None = None
-    fecha_inicio: date | None = None
-    fecha_fin: date | None = None
-    renta_mensual: Decimal | None = None
-    renta_incluye_iva: bool | None = None
-    deposito_garantia: Decimal | None = None
-    penalizacion_mora_diaria: Decimal | None = None
-    ajuste_indexado_inpc: bool | None = None
-    margen_ajuste_pp: Decimal | None = None
-    uso_permitido: str | None = None
-    jurisdiccion: str | None = None
-    estado: ContractStatus | None = None
-    archivo_url: str | None = None
-    notas: str | None = None
+class UsuarioCreate(UsuarioBase):
+    password: str
 
 
-class ContratoRead(ContratoBase):
+class UsuarioUpdate(BaseModel):
+    nombre: str | None = None
+    email: EmailStr | None = None
+    password: str | None = None
+    rol: UserRole | None = None
+    telefono: str | None = None
+    activo: bool | None = None
+
+
+class UsuarioRead(UsuarioBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID

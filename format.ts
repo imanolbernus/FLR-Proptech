@@ -1,40 +1,44 @@
-const currencyFormatter = new Intl.NumberFormat("es-MX", {
-  style: "currency",
-  currency: "MXN",
-  minimumFractionDigits: 2,
-});
+import { useQuery } from "@tanstack/react-query";
+import { propiedadesApi } from "@/api/propiedades";
+import { inquilinosApi } from "@/api/inquilinos";
+import { contratosApi } from "@/api/contratos";
+import { pagosApi } from "@/api/pagos";
+import { ticketsApi } from "@/api/tickets";
+import { documentosApi } from "@/api/documentos";
 
-/** Formatea un string/number NUMERIC del backend como moneda MXN (ej. "9000.00" -> "$9,000.00"). */
-export function formatCurrency(value: string | number | null | undefined): string {
-  if (value === null || value === undefined || value === "") return "—";
-  const n = typeof value === "string" ? Number(value) : value;
-  if (Number.isNaN(n)) return "—";
-  return currencyFormatter.format(n);
+export const qk = {
+  propiedades: ["propiedades"] as const,
+  inquilinos: ["inquilinos"] as const,
+  contratos: ["contratos"] as const,
+  pagos: ["pagos"] as const,
+  tickets: ["tickets"] as const,
+  documentosPorPropiedad: (propiedadId: string) => ["documentos", "propiedad", propiedadId] as const,
+};
+
+export function usePropiedades() {
+  return useQuery({ queryKey: qk.propiedades, queryFn: propiedadesApi.list });
 }
 
-const dateFormatter = new Intl.DateTimeFormat("es-MX", {
-  year: "numeric",
-  month: "short",
-  day: "2-digit",
-  timeZone: "UTC",
-});
-
-/** Formatea una fecha ISO (YYYY-MM-DD) del backend sin desfase de zona horaria. */
-export function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  const d = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return "—";
-  return dateFormatter.format(d);
+export function useInquilinos() {
+  return useQuery({ queryKey: qk.inquilinos, queryFn: inquilinosApi.list });
 }
 
-export function formatAddress(p: {
-  calle: string;
-  numero_exterior: string | null;
-  numero_interior: string | null;
-  colonia: string | null;
-  ciudad: string;
-}): string {
-  const numero = [p.numero_exterior, p.numero_interior].filter(Boolean).join("-");
-  const partes = [numero ? `${p.calle} ${numero}` : p.calle, p.colonia, p.ciudad].filter(Boolean);
-  return partes.join(", ");
+export function useContratos() {
+  return useQuery({ queryKey: qk.contratos, queryFn: () => contratosApi.list() });
+}
+
+export function usePagos() {
+  return useQuery({ queryKey: qk.pagos, queryFn: () => pagosApi.list() });
+}
+
+export function useTickets() {
+  return useQuery({ queryKey: qk.tickets, queryFn: () => ticketsApi.list() });
+}
+
+export function useDocumentosByPropiedad(propiedadId: string) {
+  return useQuery({
+    queryKey: qk.documentosPorPropiedad(propiedadId),
+    queryFn: () => documentosApi.listByPropiedad(propiedadId),
+    enabled: !!propiedadId,
+  });
 }

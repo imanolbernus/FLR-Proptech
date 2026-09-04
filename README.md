@@ -1,30 +1,29 @@
-# FLR PropTech
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-Sistema de gestión de propiedades en renta para el portafolio de Federico López Rodea
-(5 bodegas: Cuitláhuac 88-A, 88-B, 94, Francisco Novoa 41 y 43).
+from app.crud.base import CRUDBase
+from app.models.contrato import Contrato
+from app.schemas.contrato import ContratoCreate, ContratoUpdate
 
-- `backend/` — API en FastAPI + PostgreSQL (SQLAlchemy, Alembic).
-- `frontend/` — Interfaz en React + Vite + TypeScript + Tailwind.
 
-## Acceso
+class CRUDContrato(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
+    def get_multi_by_propiedad(
+        self, db: Session, *, propiedad_id, skip: int = 0, limit: int = 100
+    ) -> list[Contrato]:
+        stmt = (
+            select(Contrato)
+            .where(Contrato.propiedad_id == propiedad_id)
+            .order_by(Contrato.fecha_inicio.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        return list(db.scalars(stmt).all())
 
-La app y el API ya piden inicio de sesión (antes eran públicos). Cuenta
-admin sembrada automáticamente al desplegar:
+    def get_activo_por_propiedad(self, db: Session, *, propiedad_id) -> Contrato | None:
+        stmt = select(Contrato).where(
+            Contrato.propiedad_id == propiedad_id, Contrato.estado == "activo"
+        )
+        return db.scalars(stmt).first()
 
-- Correo: `federico.lopez@flr-proptech.app`
-- Contraseña: `G9thcej5oHSbVz`
 
-Cámbiala en cuanto puedas desde `/docs` del backend (`PATCH /usuarios/{id}`,
-autenticado con el botón "Authorize" usando este mismo login).
-
-## Actualizar el código en GitHub
-
-1. Descomprime este zip. Debe quedar una carpeta con `backend/`, `frontend/`,
-   `README.md` y `.gitignore` adentro.
-2. Entra a tu repositorio en GitHub, ve a "Add file" → "Upload files".
-3. Selecciona los 4 elementos de adentro de la carpeta descomprimida
-   (`backend`, `frontend`, `README.md`, `.gitignore`) y arrástralos a la zona
-   de subida. GitHub reemplaza automáticamente los archivos que ya existían
-   con el mismo nombre y agrega los nuevos.
-4. Baja y da clic en "Commit changes" — Render detecta el cambio y despliega
-   solo, sin que tengas que hacer nada más.
+contrato = CRUDContrato(Contrato)

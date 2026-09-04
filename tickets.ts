@@ -1,15 +1,11 @@
-import { apiClient } from "./client";
-import type { TicketMantenimiento, TicketMantenimientoCreate } from "@/types/entities";
+import type { ReactNode } from "react";
 
-export const ticketsApi = {
-  list: (propiedadId?: string) =>
-    apiClient.get<TicketMantenimiento[]>(
-      `/tickets/?limit=100${propiedadId ? `&propiedad_id=${propiedadId}` : ""}`
-    ),
-  get: (id: string) => apiClient.get<TicketMantenimiento>(`/tickets/${id}`),
-  create: (data: TicketMantenimientoCreate) =>
-    apiClient.post<TicketMantenimiento>("/tickets/", data),
-  update: (id: string, data: Partial<TicketMantenimientoCreate>) =>
-    apiClient.patch<TicketMantenimiento>(`/tickets/${id}`, data),
-  remove: (id: string) => apiClient.delete(`/tickets/${id}`),
-};
+export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={`rounded-xl border border-border bg-surface shadow-sm shadow-black/[0.02] ${className}`}
+    >
+      {children}
+    </div>
+  );
+}

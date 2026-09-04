@@ -1,58 +1,36 @@
-import uuid
-
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.crud.contrato import contrato as crud_contrato
-from app.schemas.contrato import ContratoCreate, ContratoRead, ContratoUpdate
+from app.core.security import create_access_token
+from app.crud.usuario import usuario as crud_usuario
+from app.models.usuario import Usuario
+from app.schemas.usuario import UsuarioRead
 
-router = APIRouter(prefix="/contratos", tags=["Contratos"])
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.get("/", response_model=list[ContratoRead])
-def listar_contratos(
-    skip: int = 0,
-    limit: int = 100,
-    propiedad_id: uuid.UUID | None = Query(default=None),
+@router.post("/login")
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    if propiedad_id:
-        return crud_contrato.get_multi_by_propiedad(db, propiedad_id=propiedad_id, skip=skip, limit=limit)
-    return crud_contrato.get_multi(db, skip=skip, limit=limit)
-
-
-@router.post("/", response_model=ContratoRead, status_code=status.HTTP_201_CREATED)
-def crear_contrato(contrato_in: ContratoCreate, db: Session = Depends(get_db)):
-    if contrato_in.estado.value == "activo" and crud_contrato.get_activo_por_propiedad(
-        db, propiedad_id=contrato_in.propiedad_id
-    ):
+    """Login estándar OAuth2 password flow: el 'username' del formulario es el
+    email del usuario. Devuelve un JWT que se manda como 'Bearer <token>' en
+    el header Authorization de cada request subsecuente."""
+    user = crud_usuario.authenticate(db, email=form_data.username, password=form_data.password)
+    if not user or not user.activo:
         raise HTTPException(
-            status_code=400,
-            detail="Ya existe un contrato activo para esta propiedad. Márcalo como "
-            "'vencido' o 'renovado' antes de crear uno nuevo activo.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Correo o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    return crud_contrato.create(db, obj_in=contrato_in)
+    access_token = create_access_token(subject=str(user.id))
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/{contrato_id}", response_model=ContratoRead)
-def obtener_contrato(contrato_id: uuid.UUID, db: Session = Depends(get_db)):
-    db_obj = crud_contrato.get(db, contrato_id)
-    if not db_obj:
-        raise HTTPException(status_code=404, detail="Contrato no encontrado")
-    return db_obj
-
-
-@router.patch("/{contrato_id}", response_model=ContratoRead)
-def actualizar_contrato(contrato_id: uuid.UUID, contrato_in: ContratoUpdate, db: Session = Depends(get_db)):
-    db_obj = crud_contrato.get(db, contrato_id)
-    if not db_obj:
-        raise HTTPException(status_code=404, detail="Contrato no encontrado")
-    return crud_contrato.update(db, db_obj=db_obj, obj_in=contrato_in)
-
-
-@router.delete("/{contrato_id}", status_code=status.HTTP_204_NO_CONTENT)
-def eliminar_contrato(contrato_id: uuid.UUID, db: Session = Depends(get_db)):
-    db_obj = crud_contrato.remove(db, id=contrato_id)
-    if not db_obj:
-        raise HTTPException(status_code=404, detail="Contrato no encontrado")
+@router.get("/me", response_model=UsuarioRead)
+def read_me(current_user: Usuario = Depends(get_current_user)):
+    return current_user
